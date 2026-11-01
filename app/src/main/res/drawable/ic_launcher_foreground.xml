@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Clinic Shield / Emblem -->
+    <path
+        android:fillColor="#1E56A0"
+        android:pathData="M54,22 C68,22 80,26 80,38 C80,64 54,84 54,84 C54,84 28,64 28,38 C28,26 40,22 54,22 Z" />
+    <path
+        android:fillColor="#0D2040"
+        android:pathData="M54,25 C66,25 76,28 76,39 C76,62 54,80 54,80 C54,80 32,62 32,39 C32,28 42,25 54,25 Z" />
+    <!-- Medical Cross -->
+    <path
+        android:fillColor="#00D2D3"
+        android:pathData="M50,33 h8 v34 h-8 z" />
+    <path
+        android:fillColor="#00D2D3"
+        android:pathData="M37,46 h34 v8 h-34 z" />
+    <!-- Inner White Cross Highlight -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M52,35 h4 v30 h-4 z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M39,48 h30 v4 h-30 z" />
+</vector>
