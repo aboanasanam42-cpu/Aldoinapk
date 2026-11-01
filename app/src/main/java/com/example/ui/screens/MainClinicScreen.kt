@@ -126,8 +126,27 @@ fun MainClinicScreen(
         }
     }
 
+    var selectedPatientForSinglePdf by remember { mutableStateOf<PatientDebt?>(null) }
+    var selectedPatientForSingleCsv by remember { mutableStateOf<PatientDebt?>(null) }
+
     // Storage SAF Activity Result Launchers
     val dateStamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())
+
+    val exportSinglePdfLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri ->
+        if (uri != null && selectedPatientForSinglePdf != null) {
+            viewModel.exportSinglePatientPdf(context, selectedPatientForSinglePdf!!, uri)
+        }
+    }
+
+    val exportSingleCsvLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        if (uri != null && selectedPatientForSingleCsv != null) {
+            viewModel.exportSinglePatientCsv(context, selectedPatientForSingleCsv!!, uri)
+        }
+    }
 
     val exportPdfLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/pdf")
@@ -438,6 +457,16 @@ fun MainClinicScreen(
                                 },
                                 onPartialPaymentClick = {
                                     patientForPayment = patient
+                                },
+                                onExportPdf = {
+                                    selectedPatientForSinglePdf = patient
+                                    val safeName = patient.patientName.replace(" ", "_").take(25)
+                                    exportSinglePdfLauncher.launch("كشف_حساب_${safeName}_$dateStamp.pdf")
+                                },
+                                onExportCsv = {
+                                    selectedPatientForSingleCsv = patient
+                                    val safeName = patient.patientName.replace(" ", "_").take(25)
+                                    exportSingleCsvLauncher.launch("كشف_حساب_${safeName}_$dateStamp.csv")
                                 }
                             )
                         }

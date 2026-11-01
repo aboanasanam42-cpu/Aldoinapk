@@ -375,6 +375,34 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun exportSinglePatientPdf(context: Context, patient: PatientDebt, uri: Uri) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isExporting = true) }
+            try {
+                context.contentResolver.openOutputStream(uri)?.use { os ->
+                    repository.exportSinglePatientToPdf(patient, os)
+                }
+                _uiState.update { it.copy(isExporting = false, userMessage = "تم حفظ كشف حساب المريض (${patient.patientName}) بملف PDF بنجاح") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isExporting = false, userMessage = "فشل تصدير PDF للمريض: ${e.message}") }
+            }
+        }
+    }
+
+    fun exportSinglePatientCsv(context: Context, patient: PatientDebt, uri: Uri) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isExporting = true) }
+            try {
+                context.contentResolver.openOutputStream(uri)?.use { os ->
+                    repository.exportSinglePatientToCsv(patient, os)
+                }
+                _uiState.update { it.copy(isExporting = false, userMessage = "تم حفظ كشف حساب المريض (${patient.patientName}) بملف إكسل بنجاح") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isExporting = false, userMessage = "فشل تصدير الإكسل للمريض: ${e.message}") }
+            }
+        }
+    }
+
     fun clearUserMessage() {
         _uiState.update { it.copy(userMessage = null) }
     }

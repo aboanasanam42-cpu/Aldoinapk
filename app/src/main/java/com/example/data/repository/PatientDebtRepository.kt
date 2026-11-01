@@ -287,4 +287,198 @@ class PatientDebtRepository(private val dao: PatientDebtDao) {
         document.writeTo(outputStream)
         document.close()
     }
+
+    // Export single patient account statement to Excel-compatible CSV
+    suspend fun exportSinglePatientToCsv(patient: PatientDebt, outputStream: OutputStream) = withContext(Dispatchers.IO) {
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        outputStream.bufferedWriter(Charsets.UTF_8).use { writer ->
+            writer.write("\uFEFF")
+            writer.write("اسم المريض,نوع العمل,المبلغ الكلي,المبلغ المسدد,المتبقي,رقم الهاتف,المنطقة,الحالة,تاريخ التسجيل,رسالة التذكير\n")
+            val status = if (patient.isPaid || patient.remainingAmount <= 0) "مسدد بالكامل" else "متبقي دين"
+            val dateStr = dateFormat.format(Date(patient.createdAt))
+            val line = buildString {
+                append("\"${patient.patientName.replace("\"", "\"\"")}\",")
+                append("\"${patient.workType.replace("\"", "\"\"")}\",")
+                append("${patient.amount},")
+                append("${patient.paidAmount},")
+                append("${patient.remainingAmount},")
+                append("\"${patient.phoneNumber}\",")
+                append("\"${patient.area.replace("\"", "\"\"")}\",")
+                append("\"$status\",")
+                append("\"$dateStr\",")
+                append("\"${patient.scheduledMessage.replace("\"", "\"\"")}\"")
+                append("\n")
+            }
+            writer.write(line)
+            writer.flush()
+        }
+    }
+
+    // Export single patient account statement to a dedicated, official PDF
+    suspend fun exportSinglePatientToPdf(patient: PatientDebt, outputStream: OutputStream) = withContext(Dispatchers.IO) {
+        val document = PdfDocument()
+        val pageWidth = 595
+        val pageHeight = 842
+
+        val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
+        val page = document.startPage(pageInfo)
+        val canvas = page.canvas
+
+        val paintNavy = Paint().apply {
+            color = Color.rgb(13, 32, 64)
+            textSize = 22f
+            isFakeBoldText = true
+            textAlign = Paint.Align.CENTER
+        }
+
+        val paintSubtitle = Paint().apply {
+            color = Color.rgb(30, 86, 160)
+            textSize = 13f
+            textAlign = Paint.Align.CENTER
+        }
+
+        val paintTextBold = Paint().apply {
+            color = Color.rgb(13, 32, 64)
+            textSize = 11f
+            isFakeBoldText = true
+            textAlign = Paint.Align.RIGHT
+        }
+
+        val paintTextRegular = Paint().apply {
+            color = Color.rgb(30, 41, 59)
+            textSize = 11f
+            textAlign = Paint.Align.RIGHT
+        }
+
+        val paintBoxFill = Paint().apply {
+            color = Color.rgb(241, 245, 249)
+        }
+
+        val paintBoxBorder = Paint().apply {
+            color = Color.rgb(203, 213, 225)
+            style = Paint.Style.STROKE
+            strokeWidth = 1.5f
+        }
+
+        val paintGreen = Paint().apply {
+            color = Color.rgb(16, 185, 129)
+            textSize = 14f
+            isFakeBoldText = true
+            textAlign = Paint.Align.RIGHT
+        }
+
+        val paintRed = Paint().apply {
+            color = Color.rgb(239, 68, 68)
+            textSize = 14f
+            isFakeBoldText = true
+            textAlign = Paint.Align.RIGHT
+        }
+
+        val paintFooter = Paint().apply {
+            color = Color.rgb(100, 116, 139)
+            textSize = 10f
+            textAlign = Paint.Align.CENTER
+        }
+
+        val dateFormat = SimpleDateFormat("yyyy/MM/dd - hh:mm a", Locale.getDefault())
+        val todayStr = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault()).format(Date())
+
+        var y = 55f
+
+        // Clinic Header
+        canvas.drawText("برنامج ديون عيادة الرحمن", pageWidth / 2f, y, paintNavy)
+        y += 24f
+        canvas.drawText("كشف حساب مريض وسند مديونية", pageWidth / 2f, y, paintSubtitle)
+        y += 18f
+        paintSubtitle.textSize = 10f
+        canvas.drawText("تاريخ الإصدار: $todayStr", pageWidth / 2f, y, paintSubtitle)
+        y += 20f
+
+        // Separator Line
+        canvas.drawLine(40f, y, pageWidth - 40f, y, paintBoxBorder)
+        y += 25f
+
+        // Patient Information Box
+        val boxLeft = 40f
+        val boxRight = pageWidth - 40f
+        val infoBoxHeight = 115f
+        canvas.drawRoundRect(boxLeft, y, boxRight, y + infoBoxHeight, 12f, 12f, paintBoxFill)
+        canvas.drawRoundRect(boxLeft, y, boxRight, y + infoBoxHeight, 12f, 12f, paintBoxBorder)
+
+        var rowY = y + 26f
+        canvas.drawText("اسم المريض:", boxRight - 20f, rowY, paintTextBold)
+        canvas.drawText(patient.patientName, boxRight - 110f, rowY, paintTextRegular)
+
+        canvas.drawText("رقم الهاتف:", boxRight - 310f, rowY, paintTextBold)
+        canvas.drawText(patient.phoneNumber.ifBlank { "غير مسجل" }, boxRight - 390f, rowY, paintTextRegular)
+
+        rowY += 28f
+        canvas.drawText("نوع العمل:", boxRight - 20f, rowY, paintTextBold)
+        canvas.drawText(patient.workType.ifBlank { "علاج عام" }, boxRight - 110f, rowY, paintTextRegular)
+
+        canvas.drawText("المنطقة:", boxRight - 310f, rowY, paintTextBold)
+        canvas.drawText(patient.area.ifBlank { "غير محدد" }, boxRight - 390f, rowY, paintTextRegular)
+
+        rowY += 28f
+        canvas.drawText("تاريخ التسجيل:", boxRight - 20f, rowY, paintTextBold)
+        canvas.drawText(dateFormat.format(Date(patient.createdAt)), boxRight - 110f, rowY, paintTextRegular)
+
+        y += infoBoxHeight + 25f
+
+        // Financial Amounts Box
+        val financeBoxHeight = 135f
+        canvas.drawRoundRect(boxLeft, y, boxRight, y + financeBoxHeight, 12f, 12f, paintBoxFill)
+        canvas.drawRoundRect(boxLeft, y, boxRight, y + financeBoxHeight, 12f, 12f, paintBoxBorder)
+
+        rowY = y + 30f
+        canvas.drawText("المبلغ الإجمالي:", boxRight - 20f, rowY, paintTextBold)
+        canvas.drawText("%,.0f د.ع/ريال".format(patient.amount), boxRight - 140f, rowY, paintTextRegular)
+
+        rowY += 30f
+        canvas.drawText("المبلغ المسدد:", boxRight - 20f, rowY, paintTextBold)
+        canvas.drawText("%,.0f د.ع/ريال".format(patient.paidAmount), boxRight - 140f, rowY, paintGreen)
+
+        rowY += 32f
+        canvas.drawText("المتبقي للسداد:", boxRight - 20f, rowY, paintTextBold)
+        val isCleared = patient.isPaid || patient.remainingAmount <= 0
+        if (isCleared) {
+            canvas.drawText("0 د.ع (مسدد بالكامل)", boxRight - 140f, rowY, paintGreen)
+        } else {
+            canvas.drawText("%,.0f د.ع/ريال (متبقي)".format(patient.remainingAmount), boxRight - 140f, rowY, paintRed)
+        }
+
+        y += financeBoxHeight + 25f
+
+        // Scheduled Reminder (if present)
+        if (patient.hasScheduledReminder && patient.scheduledMessage.isNotBlank()) {
+            val messageBoxHeight = 85f
+            canvas.drawRoundRect(boxLeft, y, boxRight, y + messageBoxHeight, 12f, 12f, paintBoxFill)
+            canvas.drawRoundRect(boxLeft, y, boxRight, y + messageBoxHeight, 12f, 12f, paintBoxBorder)
+
+            rowY = y + 25f
+            canvas.drawText("تنبيه التذكير المجدول:", boxRight - 20f, rowY, paintTextBold)
+            rowY += 22f
+            paintTextRegular.textSize = 10f
+            canvas.drawText(patient.scheduledMessage.take(80), boxRight - 20f, rowY, paintTextRegular)
+            if (patient.scheduledMessage.length > 80) {
+                rowY += 18f
+                canvas.drawText(patient.scheduledMessage.substring(80).take(80), boxRight - 20f, rowY, paintTextRegular)
+            }
+            y += messageBoxHeight + 35f
+        } else {
+            y += 35f
+        }
+
+        // Signatures area
+        rowY = y + 40f
+        canvas.drawText("ختم وتوقيع العيادة", boxRight - 80f, rowY, paintTextBold)
+        canvas.drawText("توقيع المريض المستلم", boxLeft + 150f, rowY, paintTextBold)
+
+        // Footer
+        canvas.drawText("برمجة وإشراف: الدكتور / مالك الهمة - هاتف 771124103", pageWidth / 2f, pageHeight - 35f, paintFooter)
+
+        document.finishPage(page)
+        document.writeTo(outputStream)
+        document.close()
+    }
 }

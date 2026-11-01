@@ -66,6 +66,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.IconButtonDefaults
+
 @Composable
 fun PatientCard(
     patient: PatientDebt,
@@ -73,6 +78,8 @@ fun PatientCard(
     onDelete: () -> Unit,
     onMarkAsPaid: () -> Unit,
     onPartialPaymentClick: () -> Unit,
+    onExportPdf: () -> Unit,
+    onExportCsv: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -94,12 +101,13 @@ fun PatientCard(
                 .fillMaxWidth()
                 .padding(14.dp)
         ) {
-            // Header: Patient Name & Status Chip
+            // Header: Patient Name, Export Square Buttons (PDF & Excel), & Status Chip
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                // Patient Name & Subtitle
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
@@ -157,21 +165,65 @@ fun PatientCard(
                     }
                 }
 
-                // Status Badge
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isCleared) ClinicAccentGreen.copy(alpha = 0.12f) else ClinicAccentRed.copy(alpha = 0.12f),
-                    border = null
+                // Two Square Action Buttons: PDF (Red) & Excel (Green) + Status Badge
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = if (isCleared) "مسدد بالكامل" else "متبقي دين",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = if (isCleared) ClinicAccentGreen else ClinicAccentRed,
-                            fontSize = 11.sp
+                    // المربع الأول: حفظ كشف حساب المريض بملف PDF إلى ذاكرة الهاتف
+                    FilledTonalIconButton(
+                        onClick = onExportPdf,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .testTag("export_patient_pdf_${patient.id}"),
+                        shape = RoundedCornerShape(9.dp),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = ClinicAccentRed.copy(alpha = 0.12f),
+                            contentColor = ClinicAccentRed
                         )
-                    )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PictureAsPdf,
+                            contentDescription = "حفظ كشف حساب PDF للهاتف",
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+
+                    // المربع الثاني: حفظ كشف الحساب للمريض بملف إكسل إلى ذاكرة الهاتف
+                    FilledTonalIconButton(
+                        onClick = onExportCsv,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .testTag("export_patient_excel_${patient.id}"),
+                        shape = RoundedCornerShape(9.dp),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = ClinicAccentGreen.copy(alpha = 0.14f),
+                            contentColor = ClinicAccentGreen
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.TableChart,
+                            contentDescription = "حفظ كشف حساب إكسل للهاتف",
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+
+                    // Status Badge
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isCleared) ClinicAccentGreen.copy(alpha = 0.12f) else ClinicAccentRed.copy(alpha = 0.12f),
+                        border = null
+                    ) {
+                        Text(
+                            text = if (isCleared) "مسدد" else "متبقي دين",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = if (isCleared) ClinicAccentGreen else ClinicAccentRed,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
                 }
             }
 
